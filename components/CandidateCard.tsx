@@ -11,6 +11,8 @@ interface Candidate {
   party: string;
   agenda: string;
   logo_url: string;
+  status?: string;
+  admin_message?: string;
 }
 
 interface CandidateCardProps {
@@ -81,6 +83,24 @@ export default function CandidateCard({
         >
           👑
         </motion.div>
+      )}
+
+      {/* Candidate Status Badge */}
+      {candidate.status && candidate.status !== 'approved' && (
+        <div style={{
+          position: "absolute",
+          top: 12,
+          right: selectable ? 40 : 12,
+          background: candidate.status === 'rejected' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)',
+          color: candidate.status === 'rejected' ? '#f87171' : '#fbbf24',
+          padding: "4px 10px",
+          borderRadius: 20,
+          fontSize: 10,
+          fontWeight: 700,
+          border: `1px solid ${candidate.status === 'rejected' ? 'rgba(239,68,68,0.4)' : 'rgba(245,158,11,0.4)'}`
+        }}>
+          {candidate.status.toUpperCase()}
+        </div>
       )}
 
       {/* Selected indicator */}
@@ -158,6 +178,13 @@ export default function CandidateCard({
           ? candidate.agenda.slice(0, 90) + "..."
           : candidate.agenda}
       </p>
+
+      {/* Admin Message */}
+      {candidate.admin_message && (
+        <div style={{ marginTop: 12, padding: "8px 12px", background: "rgba(239,68,68,0.1)", borderLeft: "3px solid #ef4444", borderRadius: "0 8px 8px 0" }}>
+          <p style={{ fontSize: 11, color: "#fca5a5" }}><strong>Admin Note:</strong> {candidate.admin_message}</p>
+        </div>
+      )}
 
       {/* Vote count bar */}
       {showVoteCount && (

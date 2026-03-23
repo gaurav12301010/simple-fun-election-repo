@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
+import { getSession } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase
-    .from("candidates")
-    .select("*")
-    .eq("status", "approved")
-    .order("created_at", { ascending: true });
+  const { searchParams } = new URL(req.url);
+  const statusParam = searchParams.get('status');
+
+  let query = supabase.from("candidates").select("*").order("created_at", { ascending: true });
+  
+  if (statusParam !== 'all') {
+    query = query.eq('status', 'approved');
+  }
+
+  const { data, error } = await query;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
@@ -15,7 +21,25 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session || !session.id) {
+      return NextResponse.json({ error: "Unauthorized. Please log in first." }, { status: 401 });
+    }
+
     const supabase = getSupabaseAdmin();
+    
+    // Check if user is verified
+    const { data: userRecord } = await supabase.from('users').select('status').eq('id', session.id as string).single();
+    if (!userRecord || userRecord.status !== 'verified') {
+      return NextResponse.json({ error: "Only verified voters can stand for election." }, { status: 403 });
+    }
+
+    // Check if they already applied
+    const { data: existing } = await supabase.from('candidates').select('id').eq('user_id', session.id as string).maybeSingle();
+    if (existing) {
+      return NextResponse.json({ error: "You have already registered as a candidate." }, { status: 400 });
+    }
+
     const formData = await req.formData();
     const name = formData.get("name") as string;
     const short_form = formData.get("short_form") as string;
@@ -43,7 +67,15 @@ export async function POST(req: NextRequest) {
 
     const { data, error } = await supabase
       .from("candidates")
-      .insert([{ name, short_form: short_form.toUpperCase(), party, agenda, logo_url, status: "pending" }])
+      .insert([{ 
+        user_id: session.id,
+        name, 
+        short_form: short_form.toUpperCase(), 
+        party, 
+        agenda, 
+        logo_url, 
+        status: "pending" 
+      }])
       .select()
       .single();
 

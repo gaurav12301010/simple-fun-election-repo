@@ -35,6 +35,9 @@ ALTER TABLE public.users ADD COLUMN IF NOT EXISTS signature_url TEXT;
 ALTER TABLE public.candidates ADD COLUMN IF NOT EXISTS party_name TEXT;
 ALTER TABLE public.candidates ADD COLUMN IF NOT EXISTS party_code TEXT;
 ALTER TABLE public.candidates ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'approved' CHECK (status IN ('pending', 'approved', 'rejected'));
+ALTER TABLE public.candidates ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES public.users(id) ON DELETE CASCADE;
+ALTER TABLE public.candidates ADD COLUMN IF NOT EXISTS admin_message TEXT;
+ALTER TABLE public.candidates ADD CONSTRAINT unique_candidate_user UNIQUE (user_id);
 
 -- Set any existing NULL statuses to 'approved'
 UPDATE public.candidates SET status = 'approved' WHERE status IS NULL;
@@ -53,3 +56,8 @@ CREATE TABLE public.votes (
 ALTER TABLE public.users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.candidates DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.votes DISABLE ROW LEVEL SECURITY;
+
+-- 5. Wipe Data (Optional: Run this to empty the database for a fresh start)
+-- TRUNCATE TABLE public.votes CASCADE;
+-- TRUNCATE TABLE public.candidates CASCADE;
+-- TRUNCATE TABLE public.users CASCADE;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -24,6 +24,23 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then(r => r.json())
+      .then(d => {
+        if (!d.user) {
+          setAuthError("You must register for a Voter Card and log in first.");
+        } else if (d.user.status !== "verified") {
+          setAuthError("Your Voter Card must be verified by an Admin before you can stand for election.");
+        } else if (d.user.candidate) {
+          setAuthError("You have already registered as a candidate!");
+        }
+      })
+      .finally(() => setAuthChecking(false));
+  }, []);
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -85,7 +102,21 @@ export default function RegisterPage() {
           <p style={{ color: "#94a3b8", fontSize: 16 }}>Fill in your details to enter the election race.</p>
         </motion.div>
 
-        {submitted ? (
+        {authChecking ? (
+          <div style={{ textAlign: "center", color: "#94a3b8", padding: 40 }}>Checking eligibility...</div>
+        ) : authError ? (
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="glass-strong"
+            style={{ padding: 48, textAlign: "center", maxWidth: 500, margin: "0 auto" }}
+          >
+            <div style={{ fontSize: 64, marginBottom: 16 }}>✋</div>
+            <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8, color: "#fca5a5" }}>Access Denied</h2>
+            <p style={{ color: "#94a3b8", marginBottom: 24 }}>{authError}</p>
+            <button className="btn-primary" onClick={() => router.push("/profile")}>Go to Profile</button>
+          </motion.div>
+        ) : submitted ? (
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -94,7 +125,7 @@ export default function RegisterPage() {
           >
             <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
             <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Nomination Submitted!</h2>
-            <p style={{ color: "#94a3b8" }}>Redirecting you to the candidates page...</p>
+            <p style={{ color: "#94a3b8" }}>Redirecting you to the home page...</p>
           </motion.div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32, alignItems: "start" }}>

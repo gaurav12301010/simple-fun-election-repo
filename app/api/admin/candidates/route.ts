@@ -21,12 +21,12 @@ export async function PATCH(request: Request) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const { candidateId, status } = await request.json();
+    const { candidateId, status, admin_message } = await request.json();
     const supabase = getSupabaseAdmin();
     
     const { error } = await supabase
       .from('candidates')
-      .update({ status })
+      .update({ status, admin_message: admin_message || null })
       .eq('id', candidateId);
 
     if (error) throw error;

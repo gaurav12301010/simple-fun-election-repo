@@ -23,7 +23,7 @@ export default function HomePage() {
   const fetchCandidates = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/candidates");
+      const res = await fetch("/api/candidates?status=all");
       const data = await res.json();
       setCandidates(Array.isArray(data) ? data : []);
     } catch {

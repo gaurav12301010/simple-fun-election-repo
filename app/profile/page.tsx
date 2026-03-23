@@ -106,6 +106,90 @@ function VoterIDCard({ user }: { user: any }) {
   );
 }
 
+function CandidateIDCard({ candidate, user }: { candidate: any, user: any }) {
+  const stampConfig: Record<string, { color: string; label: string; rotate: string }> = {
+    pending:  { color: "#f59e0b", label: "PENDING",  rotate: "-8deg" },
+    approved: { color: "#10b981", label: "APPROVED", rotate: "-8deg" },
+    rejected: { color: "#ef4444", label: "REJECTED", rotate: "-8deg" },
+  };
+  const stamp = stampConfig[candidate.status] || stampConfig.pending;
+
+  return (
+    <motion.div
+      whileHover={{ rotateY: 3, rotateX: -2, scale: 1.01 }}
+      transition={{ type: "spring", stiffness: 200 }}
+      style={{
+        width: "100%", maxWidth: 440,
+        background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)",
+        borderRadius: 18, border: "2px solid #6366f1",
+        boxShadow: "0 20px 60px rgba(0,0,50,0.5), inset 0 1px 0 rgba(255,255,255,0.2)",
+        overflow: "hidden", position: "relative", color: "white", userSelect: "none",
+        fontFamily: "'Georgia', serif",
+      }}
+    >
+      <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", pointerEvents:"none", zIndex:0 }}>
+        <span style={{ fontSize: 72, fontWeight: 900, color: "rgba(255,255,255,0.03)", transform: "rotate(-30deg)", whiteSpace: "nowrap", letterSpacing: 4 }}>CANDIDATE</span>
+      </div>
+
+      <div style={{ background: "linear-gradient(90deg, #4338ca, #6366f1)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 12, position: "relative", zIndex: 1 }}>
+        <div style={{ fontSize: 28 }}>🗳️</div>
+        <div>
+          <div style={{ color: "white", fontWeight: 700, fontSize: 11, letterSpacing: 2, textTransform: "uppercase" }}>Electoral Commission</div>
+          <div style={{ color: "#c7d2fe", fontSize: 10, letterSpacing: 1 }}>Official Candidate Registration</div>
+        </div>
+        <div style={{ marginLeft: "auto", color: "#c7d2fe", fontSize: 10, textAlign: "right" }}>
+          <div>PARTY CODE</div>
+          <div style={{ color: "white", fontWeight: 700, fontFamily: "monospace", fontSize: 11 }}>{candidate.short_form || "N/A"}</div>
+        </div>
+      </div>
+
+      <div style={{ padding: "16px 20px", position: "relative", zIndex: 1, display: "flex", gap: 16 }}>
+        <div style={{ flexShrink: 0 }}>
+          {candidate.logo_url ? (
+            <img src={candidate.logo_url} alt="logo" style={{ width: 85, height: 85, objectFit: "cover", border: "2px solid #818cf8", borderRadius: 6, backgroundColor: "white" }} />
+          ) : (
+            <div style={{ width: 85, height: 85, border: "2px dashed #6366f1", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(99,102,241,0.2)" }}>
+              <FiUser size={32} color="#818cf8" />
+            </div>
+          )}
+          <div style={{ marginTop: 8, fontSize: 9, color: "#a5b4fc", textAlign: "center", borderTop: "1px solid #4f46e5", paddingTop: 5, letterSpacing: 1 }}>PARTY LOGO</div>
+        </div>
+
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 5, fontSize: 11 }}>
+          {[
+            { l: "NOMINEE NAME", v: candidate.name },
+            { l: "PARTY AFFILIATION", v: candidate.party },
+            { l: "LINKED VOTER ID", v: user.voter_id || "PENDING" },
+            { l: "AGENDA", v: candidate.agenda && candidate.agenda.length > 40 ? candidate.agenda.substring(0, 40) + "..." : candidate.agenda },
+          ].map(({ l, v }) => (
+            <div key={l}>
+              <div style={{ fontSize: 8, color: "#a5b4fc", letterSpacing: 1, textTransform: "uppercase" }}>{l}</div>
+              <div style={{ fontWeight: 600, color: "white", fontFamily: "monospace", fontSize: 12 }}>{v}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ padding: "0 20px 14px", position: "relative", zIndex: 1, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+        <div style={{ fontSize: 9, color: "#94a3b8", maxWidth: "60%" }}>
+           {candidate.admin_message ? (
+             <div><span style={{color: "#fca5a5"}}>Note:</span> {candidate.admin_message}</div>
+           ) : (
+             <div>ISSUE DATE: {new Date(candidate.created_at || Date.now()).toLocaleDateString("en-IN")}</div>
+           )}
+        </div>
+        <div style={{ border: `3px solid ${stamp.color}`, borderRadius: 6, padding: "4px 10px", color: stamp.color, fontWeight: 900, fontSize: 14, letterSpacing: 3, transform: `rotate(${stamp.rotate})`, opacity: 0.9 }}>
+          {stamp.label}
+        </div>
+      </div>
+
+      <div style={{ background: "linear-gradient(90deg, #4338ca, #6366f1)", padding: "6px 20px", fontFamily: "monospace", fontSize: 9, color: "#c7d2fe", letterSpacing: 2, position: "relative", zIndex: 1 }}>
+        {`<<CANDIDATE<${candidate.short_form || "IND"}<<<<<<<<<<<<<<<<<<`}
+      </div>
+    </motion.div>
+  );
+}
+
 // ── Status config ────────────────────────────────────────────────────────────
 const STATUS = {
   pending:  { color: "#f59e0b", icon: FiClock,        text: "Pending Verification",  bg: "rgba(245,158,11,0.1)" },
@@ -128,7 +212,7 @@ export default function ProfilePage() {
     partner_name: "", crush_count: "", mobile_usage: "", early_riser: "",
     photo_url: "", signature_url: ""
   });
-  const [activeTab, setActiveTab] = useState<"card" | "details">("card");
+  const [activeTab, setActiveTab] = useState<"card" | "details" | "candidate">("card");
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -242,9 +326,9 @@ export default function ProfilePage() {
 
         {/* Tabs */}
         <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
-          {(["card", "details"] as const).map(t => (
-            <button key={t} onClick={() => setActiveTab(t)} style={{ padding: "10px 22px", borderRadius: 10, fontWeight: 600, fontSize: 14, cursor: "pointer", border: "1px solid", transition: "all 0.2s", background: activeTab === t ? "rgba(59,130,246,0.2)" : "rgba(255,255,255,0.05)", color: activeTab === t ? "#60a5fa" : "#94a3b8", borderColor: activeTab === t ? "rgba(59,130,246,0.4)" : "rgba(255,255,255,0.1)" }}>
-              {t === "card" ? "🪪 My ID Card" : "📋 My Details"}
+          {["card", "details", ...(user.candidate ? ["candidate"] : [])].map(t => (
+            <button key={t} onClick={() => setActiveTab(t as any)} style={{ padding: "10px 22px", borderRadius: 10, fontWeight: 600, fontSize: 14, cursor: "pointer", border: "1px solid", transition: "all 0.2s", background: activeTab === t ? "rgba(59,130,246,0.2)" : "rgba(255,255,255,0.05)", color: activeTab === t ? "#60a5fa" : "#94a3b8", borderColor: activeTab === t ? "rgba(59,130,246,0.4)" : "rgba(255,255,255,0.1)" }}>
+              {t === "card" ? "🪪 My ID Card" : t === "details" ? "📋 My Details" : "⭐ My Candidacy"}
             </button>
           ))}
         </div>
@@ -252,6 +336,10 @@ export default function ProfilePage() {
         {activeTab === "card" ? (
           <motion.div key="card" initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: "flex", justifyContent: "center" }}>
             <VoterIDCard user={user} />
+          </motion.div>
+        ) : activeTab === "candidate" && user.candidate ? (
+          <motion.div key="candidate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: "flex", justifyContent: "center" }}>
+            <CandidateIDCard candidate={user.candidate} user={user} />
           </motion.div>
         ) : (
           <motion.div key="details" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>

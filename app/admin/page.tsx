@@ -24,6 +24,8 @@ export default function AdminDashboard() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [reviewActionType, setReviewActionType] = useState<"review" | "rejected">("review");
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  const [expandedCandidateId, setExpandedCandidateId] = useState<string | null>(null);
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/auth")
@@ -106,16 +108,20 @@ export default function AdminDashboard() {
     }
   };
 
-  const updateCandidateStatus = async (candidateId: string, status: string) => {
+  const updateCandidateStatus = async (candidateId: string, status: string, message?: string) => {
     try {
       const res = await fetch("/api/admin/candidates", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ candidateId, status }),
+        body: JSON.stringify({ candidateId, status, admin_message: message }),
       });
       if (res.ok) {
         toast.success(`Candidate marked as ${status}`);
-        setCandidates(candidates.map(c => c.id === candidateId ? { ...c, status } : c));
+        setCandidates(candidates.map(c => c.id === candidateId ? { ...c, status, admin_message: message || null } : c));
+        if (status === "rejected") {
+          setReviewModalOpen(false);
+          setReviewMessage("");
+        }
       } else {
         toast.error("Update failed");
       }
@@ -303,7 +309,8 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody>
                   {(Array.isArray(candidates) ? candidates : []).map(c => (
-                    <tr key={c.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                    <>
+                    <tr key={c.id} style={{ borderBottom: expandedCandidateId === c.id ? "none" : "1px solid rgba(255,255,255,0.05)" }}>
                       <td style={{ padding: "16px 8px", color: "white" }}>
                         <div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 12 }}>
                           {c.logo_url && <img src={c.logo_url} alt="logo" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover" }} />}
@@ -322,15 +329,56 @@ export default function AdminDashboard() {
                           {(c.status || "approved").toUpperCase()}
                         </span>
                       </td>
-                      <td style={{ padding: "16px 8px", textAlign: "right", display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                      <td style={{ padding: "16px 8px", textAlign: "right", display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                        <button onClick={() => setExpandedCandidateId(expandedCandidateId === c.id ? null : c.id)} style={{ background: "rgba(255,255,255,0.08)", color: "#94a3b8", border: "none", padding: "6px 12px", borderRadius: 8, cursor: "pointer", fontSize: 12 }}>📋 {expandedCandidateId === c.id ? "Hide" : "Details"}</button>
                         {c.status !== 'approved' && (
                           <button onClick={() => updateCandidateStatus(c.id, 'approved')} style={{ background: "rgba(16,185,129,0.2)", color: "#10b981", border: "none", padding: "6px 12px", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}><FiCheck /> Approve</button>
                         )}
                         {c.status !== 'rejected' && (
-                          <button onClick={() => updateCandidateStatus(c.id, 'rejected')} style={{ background: "rgba(239,68,68,0.2)", color: "#f87171", border: "none", padding: "6px 12px", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}><FiX /> Reject</button>
+                          <button onClick={() => { setSelectedCandidateId(c.id); setReviewActionType('rejected'); setReviewModalOpen(true); }} style={{ background: "rgba(239,68,68,0.2)", color: "#f87171", border: "none", padding: "6px 12px", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}><FiX /> Reject</button>
                         )}
                       </td>
                     </tr>
+                    {expandedCandidateId === c.id && (
+                      <tr key={`${c.id}-details`} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                        <td colSpan={3} style={{ padding: "0 16px 20px" }}>
+                          <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 20 }}>
+                            <div style={{ display: "flex", gap: 24, flexDirection: "column" }}>
+                              {/* Headers and Party Logo */}
+                              <div style={{ display: "flex", gap: 20 }}>
+                                {c.logo_url && (
+                                  <div>
+                                    <div style={{ fontSize: 11, color: "#64748b", marginBottom: 6 }}>🪧 Party Logo</div>
+                                    <img src={c.logo_url} alt="logo" style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 8, border: "2px solid #6366f1", backgroundColor: "white" }} />
+                                  </div>
+                                )}
+                                <div>
+                                  <div style={{ color: "#64748b", fontSize: 11, marginBottom: 3 }}>Party Affiliation</div>
+                                  <div style={{ color: "white", fontWeight: 700, fontSize: 16 }}>{c.party} ({c.short_form})</div>
+                                  <div style={{ color: "#64748b", fontSize: 11, marginBottom: 3, marginTop: 12 }}>Candidate Name</div>
+                                  <div style={{ color: "white", fontWeight: 600, fontSize: 14 }}>{c.name}</div>
+                                </div>
+                              </div>
+                              {/* Agenda */}
+                              <div>
+                                <div style={{ color: "#64748b", fontSize: 11, marginBottom: 6 }}>📖 Manifesto & Agenda</div>
+                                <div style={{ color: "#e2e8f0", background: "rgba(0,0,0,0.2)", padding: 16, borderRadius: 8, whiteSpace: "pre-wrap", lineHeight: 1.6, fontSize: 13, border: "1px solid rgba(255,255,255,0.05)" }}>
+                                  {c.agenda}
+                                </div>
+                              </div>
+                              {/* Status Msg */}
+                              {c.admin_message && (
+                                <div>
+                                  <div style={{ color: "#fca5a5", fontSize: 11, marginBottom: 3 }}>Admin Rejection Note</div>
+                                  <div style={{ color: "#fecaca", fontWeight: 500, fontSize: 13 }}>{c.admin_message}</div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </>
                   ))}
                 </tbody>
               </table>
@@ -405,7 +453,13 @@ export default function AdminDashboard() {
                 onChange={e => setReviewMessage(e.target.value)}
               />
               <div style={{ display: "flex", gap: 12 }}>
-                <button className="btn-primary" style={{ flex: 1 }} onClick={() => selectedUserId && updateUserStatus(selectedUserId, reviewActionType, reviewMessage)}>Submit</button>
+                <button className="btn-primary" style={{ flex: 1 }} onClick={() => {
+                  if (activeTab === "voters" && selectedUserId) {
+                    updateUserStatus(selectedUserId, reviewActionType, reviewMessage);
+                  } else if (activeTab === "candidates" && selectedCandidateId) {
+                    updateCandidateStatus(selectedCandidateId, reviewActionType, reviewMessage);
+                  }
+                }}>Submit</button>
                 <button className="btn-primary" style={{ flex: 1, background: "rgba(255,255,255,0.1)" }} onClick={() => setReviewModalOpen(false)}>Cancel</button>
               </div>
             </motion.div>
